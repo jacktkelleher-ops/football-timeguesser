@@ -20,9 +20,12 @@ jobs:
         with:
           r-version: 'release'
 
-      # 3. Install Packages
+    # 3. Install Packages (Using Binaries for Speed & Reliability)
       - name: Install Packages
         run: |
+          # Use Posit Package Manager to get pre-compiled binaries (Fixes 'httr' error)
+          options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
+          
           install.packages(c(
             "httr", "jsonlite", "dplyr", "readr", "stringr", "tidygeocoder", 
             "rsconnect", "shiny", "leaflet", "shinyWidgets", "geosphere", 
