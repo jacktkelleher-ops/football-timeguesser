@@ -8,8 +8,10 @@ library(tidygeocoder)
 # --------------------------------------------------------
 # 1. CONFIGURATION
 # --------------------------------------------------------
-api_key <- "c12de9baf7b727bedddc5f0b51bf15e1"
-target_profile <- "https://www.flickr.com/photos/footpicshd/"
+api_key <- Sys.getenv("FLICKR_API_KEY")
+if (api_key == "") {
+  api_key <- "c12de9baf7b727bedddc5f0b51bf15e1" 
+}target_profile <- "https://www.flickr.com/photos/footpicshd/"
 target_count <- 5 
 
 # --------------------------------------------------------
@@ -147,4 +149,5 @@ write_csv(final_df, "matches.csv")
 
 message("------------------------------------------------")
 message(paste("✅ SUCCESS! Saved", nrow(final_df), "matches with parsed Years."))
+
 message("------------------------------------------------")
