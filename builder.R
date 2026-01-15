@@ -4,6 +4,7 @@ library(dplyr)
 library(readr)
 library(stringr)
 library(tidygeocoder)
+message("FLICKR_API_KEY present: ", nzchar(Sys.getenv("FLICKR_API_KEY")))
 
 # --------------------------------------------------------
 # 1. CONFIGURATION
@@ -170,3 +171,4 @@ write_csv(final_df, "matches.csv")
 message("------------------------------------------------")
 message(paste("✅ SUCCESS! Saved", nrow(final_df), "matches with parsed Years."))
 message("------------------------------------------------")
+
