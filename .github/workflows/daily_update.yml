@@ -2,6 +2,7 @@ name: Daily Quiz Update
 
 on:
   schedule:
+    # Runs at 22:00 UTC (09:00 Melbourne time)
     - cron: '0 22 * * *'
   workflow_dispatch:
 
@@ -13,10 +14,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ------------------------------
+      # 1. Checkout Repository
+      # ------------------------------
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # CRITICAL: System deps must come FIRST
+      # ------------------------------
+      # 2. System Dependencies (CRITICAL)
+      # ------------------------------
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -26,27 +32,50 @@ jobs:
             libxml2-dev \
             pkg-config
 
+      # ------------------------------
+      # 3. Set up R
+      # ------------------------------
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'release'
           use-public-rspm: true
 
+      # ------------------------------
+      # 4. Install R Packages
+      # ------------------------------
       - name: Install R Packages
         shell: Rscript {0}
         run: |
           options(repos = c(CRAN = "https://cloud.r-project.org"))
+
           install.packages(c(
-            "httr", "jsonlite", "dplyr", "readr", "stringr",
-            "tidygeocoder", "rsconnect", "shiny", "leaflet",
-            "shinyWidgets", "geosphere", "shinyjs", "bslib"
+            "httr",
+            "jsonlite",
+            "dplyr",
+            "readr",
+            "stringr",
+            "tidygeocoder",
+            "rsconnect",
+            "shiny",
+            "leaflet",
+            "shinyWidgets",
+            "geosphere",
+            "shinyjs",
+            "bslib"
           ))
 
+      # ------------------------------
+      # 5. Build Daily Match Data
+      # ------------------------------
       - name: Generate New Matches
         env:
           FLICKR_API_KEY: ${{ secrets.FLICKR_API_KEY }}
         run: Rscript builder.R
 
+      # ------------------------------
+      # 6. Commit Generated Data
+      # ------------------------------
       - name: Commit New Data
         run: |
           git config --local user.email "action@github.com"
@@ -55,6 +84,9 @@ jobs:
           git commit -m "Daily data refresh" || echo "No changes to commit"
           git push origin main
 
+      # ------------------------------
+      # 7. Deploy to ShinyApps.io
+      # ------------------------------
       - name: Deploy to ShinyApps
         env:
           RSCONNECT_USER: ${{ secrets.RSCONNECT_USER }}
@@ -62,14 +94,17 @@ jobs:
           RSCONNECT_SECRET: ${{ secrets.RSCONNECT_SECRET }}
         run: |
           Rscript -e "
-          library(rsconnect);
-          setAccountInfo(
-            name='${RSCONNECT_USER}',
-            token='${RSCONNECT_TOKEN}',
-            secret='${RSCONNECT_SECRET}'
-          );
-          deployApp(
-            appName='football-timeguesser',
-            appFiles=c('app.R','matches.csv'),
-            forceUpdate=TRUE
-          )"
+            library(rsconnect)
+
+            setAccountInfo(
+              name   = Sys.getenv('RSCONNECT_USER'),
+              token  = Sys.getenv('RSCONNECT_TOKEN'),
+              secret = Sys.getenv('RSCONNECT_SECRET')
+            )
+
+            deployApp(
+              appName   = 'football-timeguesser',
+              appFiles  = c('app.R', 'matches.csv'),
+              forceUpdate = TRUE
+            )
+          "
