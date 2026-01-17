@@ -1,0 +1,10 @@
+install.packages(c(
+  "shiny",
+  "leaflet",
+  "dplyr",
+  "readr",
+  "shinyWidgets",
+  "geosphere",
+  "shinyjs",
+  "bslib"
+))
