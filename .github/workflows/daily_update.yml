@@ -70,6 +70,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git pull origin main --rebase
           git add matches.csv
           git commit -m "Daily data refresh" || echo "No changes to commit"
           git push origin main
