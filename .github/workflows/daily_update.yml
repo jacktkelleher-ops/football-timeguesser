@@ -70,29 +70,12 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add matches.csv install.R
+          git add matches.csv
           git diff-index --quiet HEAD || git commit -m "Daily data refresh"
           git pull origin main --rebase || true
           git push origin main
       # ------------------------------
-      # 7. Create Dependency File
-      # ------------------------------
-      - name: Write Dependencies
-        run: |
-          cat > install.R << 'EOF'
-          install.packages(c(
-            "shiny",
-            "leaflet",
-            "dplyr",
-            "readr",
-            "shinyWidgets",
-            "geosphere",
-            "shinyjs",
-            "bslib"
-          ))
-          EOF
-      # ------------------------------
-      # 8. Deploy to ShinyApps.io
+      # 7. Deploy to ShinyApps.io
       # ------------------------------
       - name: Deploy to ShinyApps
         env:
@@ -102,14 +85,28 @@ jobs:
         run: |
           Rscript -e "
             library(rsconnect)
+            
+            # Make sure all packages are loaded so rsconnect can detect them
+            library(shiny)
+            library(leaflet)
+            library(dplyr)
+            library(readr)
+            library(shinyWidgets)
+            library(geosphere)
+            library(shinyjs)
+            library(bslib)
+            
             setAccountInfo(
               name   = Sys.getenv('RSCONNECT_USER'),
               token  = Sys.getenv('RSCONNECT_TOKEN'),
               secret = Sys.getenv('RSCONNECT_SECRET')
             )
+            
+            # Write manifest to capture dependencies
+            rsconnect::writeManifest()
+            
             deployApp(
               appName   = 'football-timeguesser',
-              appFiles  = c('app.R', 'matches.csv', 'install.R'),
               forceUpdate = TRUE,
               launch.browser = FALSE,
               lint = FALSE
