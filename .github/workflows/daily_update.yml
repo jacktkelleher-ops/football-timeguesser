@@ -70,9 +70,9 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull origin main --rebase
-          git add matches.csv
-          git commit -m "Daily data refresh" || echo "No changes to commit"
+          git add matches.csv install.R
+          git diff-index --quiet HEAD || git commit -m "Daily data refresh"
+          git pull origin main --rebase || true
           git push origin main
       # ------------------------------
       # 7. Create Dependency File
