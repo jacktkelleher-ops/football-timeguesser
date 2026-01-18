@@ -25,6 +25,10 @@ jobs:
             libcurl4-openssl-dev \
             libssl-dev \
             libxml2-dev \
+            libgdal-dev \
+            libgeos-dev \
+            libproj-dev \
+            libudunits2-dev \
             pkg-config
       # ------------------------------
       # 3. Set up R
@@ -35,20 +39,28 @@ jobs:
           r-version: 'release'
           use-public-rspm: true
       # ------------------------------
-      # 4. Install R Packages
+      # 4. Install ALL R Packages (including app dependencies)
       # ------------------------------
       - name: Install R Packages
         shell: Rscript {0}
         run: |
           options(repos = c(CRAN = "https://cloud.r-project.org"))
+          
+          # Install builder script packages
           install.packages(c(
             "httr",
             "jsonlite",
             "dplyr",
             "readr",
             "stringr",
-            "tidygeocoder",
-            "rsconnect",
+            "tidygeocoder"
+          ))
+          
+          # Install deployment packages
+          install.packages("rsconnect")
+          
+          # CRITICAL: Install ALL app dependencies so rsconnect can detect them
+          install.packages(c(
             "shiny",
             "leaflet",
             "shinyWidgets",
@@ -56,6 +68,12 @@ jobs:
             "shinyjs",
             "bslib"
           ))
+          
+          # Verify leaflet is installed
+          if (!require("leaflet", quietly = TRUE)) {
+            stop("leaflet failed to install!")
+          }
+          message("✓ leaflet successfully installed")
       # ------------------------------
       # 5. Build Daily Match Data
       # ------------------------------
@@ -64,7 +82,14 @@ jobs:
           FLICKR_API_KEY: ${{ secrets.FLICKR_API_KEY }}
         run: Rscript builder.R
       # ------------------------------
-      # 6. Commit Generated Data
+      # 6. Remove any old manifest files
+      # ------------------------------
+      - name: Clean old deployment files
+        run: |
+          rm -f manifest.json
+          rm -rf rsconnect/
+      # ------------------------------
+      # 7. Commit Generated Data
       # ------------------------------
       - name: Commit New Data
         run: |
@@ -75,56 +100,6 @@ jobs:
           git pull origin main --rebase || true
           git push origin main
       # ------------------------------
-      # 7. Create Dependency Manifest
-      # ------------------------------
-      - name: Create manifest.json
-        run: |
-          cat > manifest.json << 'EOF'
-          {
-            "version": 1,
-            "locale": "en_US",
-            "platform": "4.5.2",
-            "metadata": {
-              "appmode": "shiny"
-            },
-            "packages": {
-              "shiny": {
-                "Source": "CRAN"
-              },
-              "leaflet": {
-                "Source": "CRAN"
-              },
-              "dplyr": {
-                "Source": "CRAN"
-              },
-              "readr": {
-                "Source": "CRAN"
-              },
-              "shinyWidgets": {
-                "Source": "CRAN"
-              },
-              "geosphere": {
-                "Source": "CRAN"
-              },
-              "shinyjs": {
-                "Source": "CRAN"
-              },
-              "bslib": {
-                "Source": "CRAN"
-              }
-            },
-            "files": {
-              "app.R": {
-                "checksum": ""
-              },
-              "matches.csv": {
-                "checksum": ""
-              }
-            },
-            "users": null
-          }
-          EOF
-      # ------------------------------
       # 8. Deploy to ShinyApps.io
       # ------------------------------
       - name: Deploy to ShinyApps
@@ -133,20 +108,27 @@ jobs:
           RSCONNECT_TOKEN: ${{ secrets.RSCONNECT_TOKEN }}
           RSCONNECT_SECRET: ${{ secrets.RSCONNECT_SECRET }}
         run: |
-          Rscript -e "
+          Rscript -e '
             library(rsconnect)
             
+            # Verify leaflet is available
+            if (!require("leaflet", quietly = TRUE)) {
+              stop("leaflet is not available for deployment!")
+            }
+            
             setAccountInfo(
-              name   = Sys.getenv('RSCONNECT_USER'),
-              token  = Sys.getenv('RSCONNECT_TOKEN'),
-              secret = Sys.getenv('RSCONNECT_SECRET')
+              name   = Sys.getenv("RSCONNECT_USER"),
+              token  = Sys.getenv("RSCONNECT_TOKEN"),
+              secret = Sys.getenv("RSCONNECT_SECRET")
             )
             
+            # Deploy
             deployApp(
-              appName   = 'football-timeguesser',
-              appFiles  = c('app.R', 'matches.csv', 'manifest.json'),
+              appDir = ".",
+              appFiles = c("app.R", "matches.csv"),
+              appName = "football-timeguesser",
               forceUpdate = TRUE,
               launch.browser = FALSE,
               lint = FALSE
             )
-          "
+          '
