@@ -44,7 +44,8 @@ jobs:
       - name: Install R Packages
         shell: Rscript {0}
         run: |
-          options(repos = c(CRAN = "https://cloud.r-project.org"))
+          # Use a dated snapshot to avoid bleeding-edge packages that ShinyApps.io can't satisfy
+          options(repos = c(CRAN = "https://packagemanager.posit.co/cran/2025-06-01"))
           
           # Install builder script packages
           install.packages(c(
