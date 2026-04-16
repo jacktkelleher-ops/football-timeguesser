@@ -95,9 +95,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git fetch origin main
+          git rebase origin/main
           git add matches.csv
           git diff-index --quiet HEAD || git commit -m "Daily data refresh"
-          git pull origin main --rebase || true
           git push origin main
       # ------------------------------
       # 8. Deploy to ShinyApps.io
