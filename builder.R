@@ -83,6 +83,7 @@ candidates <- full_list %>% sample_n(min(n(), 15))
 message(paste("Parsing and geocoding", nrow(candidates), "photos..."))
 
 results <- list()
+germany_2024_count <- 0
 
 for (i in seq_len(nrow(candidates))) {
   row <- candidates[i, ]
@@ -109,11 +110,21 @@ for (i in seq_len(nrow(candidates))) {
     verbose = FALSE
   )
   if (!is.na(geo$lat)) {
-    message("      Found!")
-    row$Real_Lat <- geo$lat
-    row$Real_Lon <- geo$long
-    row$Correct_Year <- year_extracted
-    results[[length(results) + 1]] <- row
+    # Limit Germany 2024 photos to at most 1 per game
+    # Germany bounding box: lat 47-55, lon 6-15
+    is_germany_2024 <- !is.na(year_extracted) && year_extracted == 2024 &&
+                       geo$lat >= 47 && geo$lat <= 55 &&
+                       geo$long >= 6 && geo$long <= 15
+    if (is_germany_2024 && germany_2024_count >= 1) {
+      message("      Skipping: Germany 2024 limit reached.")
+    } else {
+      if (is_germany_2024) germany_2024_count <- germany_2024_count + 1
+      message("      Found!")
+      row$Real_Lat <- geo$lat
+      row$Real_Lon <- geo$long
+      row$Correct_Year <- year_extracted
+      results[[length(results) + 1]] <- row
+    }
   } else {
     message("      Location lookup failed.")
   }

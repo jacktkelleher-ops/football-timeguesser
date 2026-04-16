@@ -36,6 +36,25 @@ ui <- fluidPage(
         text-align: center;
         margin-bottom: 15px;
       }
+      .breakdown-box {
+        background-color: #1a252f;
+        border: 1px solid #2c3e50;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+      }
+      .breakdown-item span.label {
+        display: block;
+        color: #bdc3c7;
+        font-size: 0.8em;
+      }
+      .breakdown-item span.value {
+        font-size: 1.5em;
+        font-weight: bold;
+      }
     "))
   ),
   
@@ -72,13 +91,31 @@ ui <- fluidPage(
              ),
              
              tags$hr(),
-             
+
              # Feedback Area
              tags$div(
                tags$h4(textOutput("feedback_title"), style = "text-align: center; color: #00bc8c; font-weight: bold;"),
                tags$p(textOutput("feedback_details"), style = "text-align: center; color: #fff;"),
                tags$p(textOutput("attribution"), style = "color: #888; font-size: 0.8em; text-align: center; font-style: italic;")
-             )
+             ),
+
+             # Score Breakdown (shown after each guess)
+             hidden(tags$div(id = "score_breakdown",
+               tags$div(class = "breakdown-box",
+                 tags$div(class = "breakdown-item",
+                   tags$span("📍 Location", class = "label"),
+                   tags$span(textOutput("loc_score_display"), class = "value", style = "color: #3498db;")
+                 ),
+                 tags$div(class = "breakdown-item",
+                   tags$span("📅 Year", class = "label"),
+                   tags$span(textOutput("year_score_display"), class = "value", style = "color: #e74c3c;")
+                 ),
+                 tags$div(class = "breakdown-item",
+                   tags$span("Round Total", class = "label"),
+                   tags$span(textOutput("round_score_display"), class = "value", style = "color: #f39c12;")
+                 )
+               )
+             ))
            )
     )
   )
@@ -185,12 +222,17 @@ server <- function(input, output, session) {
     # 4. Feedback
     output$feedback_title <- renderText(paste("+", round_score, "Points!"))
     output$feedback_details <- renderText(
-      sprintf("It was %s (%d). You were %dkm away.", 
+      sprintf("It was %s (%d). You were %dkm away.",
               m$Attribution, m$Correct_Year, round(dist_km))
     )
-    
+
     output$attribution <- renderText(m$Attribution)
-    
+
+    output$loc_score_display  <- renderText(round(loc_score))
+    output$year_score_display <- renderText(round(year_score))
+    output$round_score_display <- renderText(round_score)
+
+    shinyjs::show("score_breakdown")
     shinyjs::hide("submit")
     shinyjs::show("next_round")
   })
@@ -212,7 +254,10 @@ server <- function(input, output, session) {
     output$feedback_title <- renderText("")
     output$feedback_details <- renderText("")
     output$attribution <- renderText("")
-    
+
+    updateSliderInput(session, "year_guess", value = 2015)
+    shinyjs::hide("score_breakdown")
+
     leafletProxy("map") %>% clearMarkers() %>% clearShapes()
     shinyjs::show("submit")
     shinyjs::hide("next_round")
