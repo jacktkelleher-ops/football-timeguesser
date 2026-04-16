@@ -96,7 +96,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git fetch origin main
+          git stash -- matches.csv
           git rebase origin/main
+          git stash pop
           git add matches.csv
           git diff-index --quiet HEAD || git commit -m "Daily data refresh"
           git push origin main
