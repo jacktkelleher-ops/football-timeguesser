@@ -101,6 +101,30 @@ full_list <- full_list %>%
 
 message(paste("Valid photos after format filtering:", nrow(full_list)))
 
+# Diagnostic: show year distribution and sample titles per year bucket
+message("--- Year distribution across all valid photos ---")
+year_dist <- full_list %>%
+  mutate(era = cut(photo_year,
+                   breaks = c(1900, 2014, 2018, 2021, 2023, 2030),
+                   labels = c("pre-2015","2015-2018","2019-2021","2022-2023","2024+"),
+                   right  = TRUE)) %>%
+  count(era, .drop = FALSE)
+for (i in seq_len(nrow(year_dist))) {
+  message(paste("  ", year_dist$era[i], ":", year_dist$n[i], "photos"))
+}
+
+message("--- Sample of 10 photos with extracted years (to verify extraction) ---")
+sample_rows <- full_list %>% slice_sample(n = min(10, nrow(full_list)))
+for (i in seq_len(nrow(sample_rows))) {
+  message(sprintf("  [%d] title_year=%s | meta_year=%s | photo_year=%s | title: %s",
+                  i,
+                  sample_rows$title_year[i],
+                  sample_rows$meta_year[i],
+                  sample_rows$photo_year[i],
+                  str_trunc(sample_rows$Title[i], 60)))
+}
+message("---")
+
 # ------------------------------
 # Stratified sampling across year buckets
 # Ensures candidate pool has photos from a spread of eras,
