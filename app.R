@@ -117,7 +117,7 @@ ui <- fluidPage(
              # Controls
              tags$div(id = "game_controls",
                       sliderInput("year_guess", "📅 Guess the Year:",
-                                  min = 2000, max = as.integer(format(Sys.Date(), "%Y")), value = 2015, sep = "", step = 1),
+                                  min = 1900, max = as.integer(format(Sys.Date(), "%Y")), value = 2000, sep = "", step = 1),
                       
                       tags$p("📍 Click on the map to guess the location!", style = "color: #aaa; font-size: 0.9em;"),
                       
