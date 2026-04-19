@@ -55,11 +55,46 @@ ui <- fluidPage(
         font-size: 1.5em;
         font-weight: bold;
       }
+      .summary-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        padding: 20px 0;
+      }
+      .summary-card {
+        background: #2c3e50;
+        border-radius: 8px;
+        overflow: hidden;
+        width: 180px;
+        text-align: center;
+      }
+      .summary-card img {
+        width: 100%;
+        height: 130px;
+        object-fit: cover;
+      }
+      .summary-card .card-score {
+        padding: 10px;
+        color: #f39c12;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      .final-score-box {
+        background: #2c3e50;
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+        margin: 20px auto;
+        max-width: 400px;
+      }
     "))
   ),
   
   titlePanel("⚽ Football TimeGuesser"),
-  
+
+  # --- Main Game Area ---
+  tags$div(id = "game_area",
   fluidRow(
     # --- Left Column: Map ---
     column(width = 8,
@@ -119,6 +154,20 @@ ui <- fluidPage(
            )
     )
   )
+  ), # end game_area
+
+  # --- Summary Page (shown after final round) ---
+  hidden(tags$div(id = "summary_page",
+    tags$h2("🏆 Game Over!", style = "text-align: center; color: #f39c12; padding-top: 20px;"),
+    tags$div(class = "summary-grid",
+      uiOutput("summary_grid")
+    ),
+    tags$div(class = "final-score-box",
+      tags$div("Final Score", style = "color: #bdc3c7; font-size: 0.95em;"),
+      tags$div(textOutput("final_score_text"), style = "color: #f39c12; font-size: 2.5em; font-weight: bold;"),
+      tags$div("/ 50,000", style = "color: #bdc3c7; font-size: 1em;")
+    )
+  ))
 )
 
 # ----------------------------------------------------
@@ -140,7 +189,8 @@ server <- function(input, output, session) {
     total_score = 0,
     guess_lat = NA,
     guess_lon = NA,
-    game_over = FALSE
+    game_over = FALSE,
+    round_results = list()
   )
   
   # --- FIX: Wrapped this check in observe() ---
@@ -204,13 +254,19 @@ server <- function(input, output, session) {
     dist_km <- distHaversine(c(rv$guess_lon, rv$guess_lat), c(m$Real_Lon, m$Real_Lat)) / 1000
     
     # 2. Score Calculation
-    loc_score <- 4000 * exp(-dist_km / 1500) 
-    
+    loc_score <- 5000 * exp(-dist_km / 1500)
+
     year_diff <- abs(input$year_guess - m$Correct_Year)
     year_score <- round(5000 * exp(-year_diff / 3))
-    
+
     round_score <- round(loc_score + year_score)
     rv$total_score <- rv$total_score + round_score
+
+    # Store result for summary page
+    rv$round_results[[rv$round]] <- list(
+      image_url = as.character(m$Image_URL),
+      round_score = round_score
+    )
     
     # 3. Update Map
     leafletProxy("map") %>%
@@ -241,10 +297,8 @@ server <- function(input, output, session) {
   observeEvent(input$next_round, {
     if (rv$round >= nrow(rv$matches)) {
       rv$game_over <- TRUE
-      output$feedback_title <- renderText("🏆 GAME OVER")
-      output$feedback_details <- renderText(paste("Final Score:", rv$total_score))
-      shinyjs::hide("next_round")
-      shinyjs::hide("game_controls")
+      shinyjs::hide("game_area")
+      shinyjs::show("summary_page")
       return()
     }
     
@@ -261,6 +315,23 @@ server <- function(input, output, session) {
     leafletProxy("map") %>% clearMarkers() %>% clearShapes()
     shinyjs::show("submit")
     shinyjs::hide("next_round")
+  })
+
+  # --- Summary Page Outputs ---
+  output$summary_grid <- renderUI({
+    results <- rv$round_results
+    cards <- lapply(seq_along(results), function(i) {
+      r <- results[[i]]
+      tags$div(class = "summary-card",
+        tags$img(src = r$image_url),
+        tags$div(class = "card-score", paste("+", format(r$round_score, big.mark = ",")))
+      )
+    })
+    tagList(cards)
+  })
+
+  output$final_score_text <- renderText({
+    format(rv$total_score, big.mark = ",")
   })
 }
 
