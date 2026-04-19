@@ -126,7 +126,7 @@ candidates <- lapply(year_buckets, function(rng) {
   bucket %>% slice_sample(n = n_sample)
 }) %>%
   bind_rows() %>%
-  slice_sample(n = n())  # shuffle so bucket order doesn't bias geocoding
+  slice_sample(prop = 1)  # shuffle so bucket order doesn't bias geocoding
 
 message(paste("Total stratified candidates:", nrow(candidates)))
 message("Geocoding candidates...")
