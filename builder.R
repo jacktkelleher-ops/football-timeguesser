@@ -78,33 +78,71 @@ fetch_metadata <- function(user_id, key) {
 user_id <- get_flickr_id(target_profile, api_key)
 full_list <- fetch_metadata(user_id, api_key)
 
-candidates <- full_list %>% sample_n(min(n(), 15))
+# ------------------------------
+# Parse and filter all photos upfront
+# Only keep photos whose titles match the expected "Match - Location - Year" format
+# ------------------------------
+full_list <- full_list %>%
+  mutate(
+    n_parts = sapply(str_split(Title, " - "), length),
+    location_query = sapply(str_split(Title, " - "), function(p) {
+      if (length(p) >= 3) p[length(p) - 1] else NA_character_
+    }),
+    title_year = as.integer(str_extract(
+      sapply(str_split(Title, " - "), function(p) {
+        if (length(p) >= 3) p[length(p)] else ""
+      }),
+      "\\d{4}"
+    )),
+    meta_year  = as.integer(str_extract(Date_Meta, "^\\d{4}")),
+    photo_year = ifelse(!is.na(title_year), title_year, meta_year)
+  ) %>%
+  filter(n_parts >= 3, !is.na(photo_year), !is.na(location_query))
 
-message(paste("Parsing and geocoding", nrow(candidates), "photos..."))
+message(paste("Valid photos after format filtering:", nrow(full_list)))
+
+# ------------------------------
+# Stratified sampling across year buckets
+# Ensures candidate pool has photos from a spread of eras,
+# not just whatever is most common (typically recent years)
+# ------------------------------
+year_buckets <- list(
+  c(2000, 2014),
+  c(2015, 2018),
+  c(2019, 2021),
+  c(2022, 2023),
+  c(2024, 2030)
+)
+
+candidates <- lapply(year_buckets, function(rng) {
+  bucket <- full_list %>% filter(photo_year >= rng[1], photo_year <= rng[2])
+  n_available <- nrow(bucket)
+  if (n_available == 0) {
+    message(paste("  Bucket", rng[1], "-", rng[2], ": no photos available"))
+    return(NULL)
+  }
+  n_sample <- min(n_available, 3)
+  message(paste("  Bucket", rng[1], "-", rng[2], ":", n_available, "available, sampling", n_sample))
+  bucket %>% slice_sample(n = n_sample)
+}) %>%
+  bind_rows() %>%
+  slice_sample(n = n())  # shuffle so bucket order doesn't bias geocoding
+
+message(paste("Total stratified candidates:", nrow(candidates)))
+message("Geocoding candidates...")
 
 results <- list()
 germany_2024_count <- 0
 
 for (i in seq_len(nrow(candidates))) {
   row <- candidates[i, ]
-  raw_title <- row$Title
-  parts <- str_split(raw_title, " - ")[[1]]
-  location_query <- NA
-  year_extracted <- NA
-  if (length(parts) >= 3) {
-    location_query <- parts[length(parts) - 1]
-    date_part <- parts[length(parts)]
-    year_extracted <- as.integer(str_extract(date_part, "\\d{4}"))
-  } else {
-    message(paste("   Skipping (title does not match expected format):", str_trunc(raw_title, 60)))
-    next
-  }
-  if (is.na(year_extracted)) {
-    year_extracted <- as.integer(str_extract(row$Date_Meta, "^\\d{4}"))
-  }
-  message(paste("   Title:", str_trunc(raw_title, 40)))
+  location_query <- row$location_query
+  year_extracted <- row$photo_year
+
+  message(paste("   Title:", str_trunc(row$Title, 40)))
   message(paste("      Location:", location_query))
   message(paste("      Year:", year_extracted))
+
   geo <- geo(
     address = location_query,
     method = "arcgis",
