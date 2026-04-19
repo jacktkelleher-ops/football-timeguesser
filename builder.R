@@ -96,7 +96,8 @@ for (i in seq_len(nrow(candidates))) {
     date_part <- parts[length(parts)]
     year_extracted <- as.integer(str_extract(date_part, "\\d{4}"))
   } else {
-    location_query <- paste(str_remove_all(raw_title, "<.*?>"), "Stadium")
+    message(paste("   Skipping (title does not match expected format):", str_trunc(raw_title, 60)))
+    next
   }
   if (is.na(year_extracted)) {
     year_extracted <- as.integer(str_extract(row$Date_Meta, "^\\d{4}"))
