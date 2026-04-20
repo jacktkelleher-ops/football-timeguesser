@@ -73,7 +73,15 @@ parse_and_filter <- function(df, expected_year) {
     mutate(
       n_parts = sapply(str_split(Title, " - "), length),
       location_query = sapply(str_split(Title, " - "), function(p) {
-        if (length(p) >= 3) p[length(p) - 1] else NA_character_
+        if (length(p) < 3) return(NA_character_)
+        loc <- p[length(p) - 1]
+        # Append "football stadium" if the location doesn't already reference
+        # a stadium/arena/ground, to help ArcGIS return a more precise result
+        stadium_words <- "stadium|stadion|stade|estadio|est\u00e1dio|stadio|arena|ground|park"
+        if (!str_detect(tolower(loc), stadium_words)) {
+          loc <- paste(loc, "football stadium")
+        }
+        loc
       }),
       photo_year = as.integer(str_extract(
         sapply(str_split(Title, " - "), function(p) {
