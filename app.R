@@ -88,6 +88,44 @@ ui <- fluidPage(
         margin: 20px auto;
         max-width: 400px;
       }
+
+      /* ---- Mobile styles ---- */
+      @media (max-width: 767px) {
+
+        /* Reduce map height on small screens */
+        #map { height: 350px !important; }
+
+        /* Show controls panel above map on mobile by reversing column order */
+        #game_area > .row {
+          display: flex;
+          flex-direction: column-reverse;
+        }
+
+        /* Ensure both columns go full width when stacked */
+        #game_area > .row > div {
+          width: 100% !important;
+        }
+
+        /* Limit photo height on mobile */
+        #matchImage img { max-height: 220px; }
+
+        /* Stack score breakdown vertically on narrow screens */
+        .breakdown-box {
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        /* Smaller summary cards on mobile */
+        .summary-card { width: 120px; }
+        .summary-card img { height: 90px; }
+        .summary-card .card-score { font-size: 1em; padding: 6px; }
+
+        /* Tighten summary grid gap */
+        .summary-grid { gap: 10px; }
+
+        /* Final score box full width */
+        .final-score-box { max-width: 100%; margin: 10px; }
+      }
     "))
   ),
   
@@ -98,7 +136,7 @@ ui <- fluidPage(
   fluidRow(
     # --- Left Column: Map ---
     column(width = 8,
-           leafletOutput("map", height = "750px")
+           leafletOutput("map", height = "750px", width = "100%")
     ),
     
     # --- Right Column: Game Controls ---
