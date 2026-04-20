@@ -104,7 +104,7 @@ get_bucket_candidates <- function(user_id, key, bucket_name, search_years, targe
   all_valid <- list()
 
   for (year in search_years) {
-    query <- paste0("- ", year)
+    query <- as.character(year)
     message(paste("  Searching for:", query))
 
     raw   <- search_photos(user_id, key, query)
